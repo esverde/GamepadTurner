@@ -7,9 +7,8 @@ from tkinter import font, ttk
 
 import pystray
 from PIL import Image
-from pygame import event
+from pygame import event, joystick
 from pygame import init as pygame_init
-from pygame import joystick
 from pygame import quit as pygame_quit
 from requests import exceptions, get
 
@@ -71,17 +70,22 @@ class PageTurnerApp:
         center_frame.pack(expand=True)
         center_frame.columnconfigure(1, weight=1)
         label_font = font.Font(family="Microsoft YaHei", size=10)
-        button_font = font.Font(family="Microsoft YaHei", size=11, weight="bold")
+        button_font = font.Font(
+            family="Microsoft YaHei", size=11, weight="bold"
+        )
         self.style.configure("Custom.TLabel", font=label_font)
         self.style.configure("Custom.TEntry", font=label_font)
         self.style.configure("Custom.TButton", font=button_font, padding=5)
         self.style.configure("Status.TLabel", font=label_font, padding="5 2")
-        ttk.Label(center_frame, text="阅读器 IP 地址:", style="Custom.TLabel").grid(
-            row=0, column=0, sticky=tk.W, pady=8, padx=5
-        )
+        ttk.Label(
+            center_frame, text="阅读器 IP 地址:", style="Custom.TLabel"
+        ).grid(row=0, column=0, sticky=tk.W, pady=8, padx=5)
         self.ip_var = tk.StringVar(value="192.168.1.10")
         self.ip_entry = ttk.Entry(
-            center_frame, textvariable=self.ip_var, width=20, style="Custom.TEntry"
+            center_frame,
+            textvariable=self.ip_var,
+            width=20,
+            style="Custom.TEntry",
         )
         self.ip_entry.grid(row=0, column=1, sticky=tk.W, padx=5)
         ttk.Label(center_frame, text="端口:", style="Custom.TLabel").grid(
@@ -89,7 +93,10 @@ class PageTurnerApp:
         )
         self.port_var = tk.StringVar(value="8080")
         self.port_entry = ttk.Entry(
-            center_frame, textvariable=self.port_var, width=20, style="Custom.TEntry"
+            center_frame,
+            textvariable=self.port_var,
+            width=20,
+            style="Custom.TEntry",
         )
         self.port_entry.grid(row=1, column=1, sticky=tk.W, padx=5)
         self.toggle_button = ttk.Button(
@@ -209,7 +216,9 @@ class PageTurnerApp:
             pystray.MenuItem("显示窗口", self.show_window, default=True),
             pystray.MenuItem("退出", self.quit_application),
         )
-        self.tray_icon = pystray.Icon("PageTurner", icon_image, "手柄无线翻页器", menu)
+        self.tray_icon = pystray.Icon(
+            "PageTurner", icon_image, "手柄无线翻页器", menu
+        )
         return self.tray_icon
 
     def show_window(self):
@@ -233,7 +242,9 @@ class PageTurnerApp:
             if not self.tray_icon:
                 self.tray_icon = self.setup_tray_icon()
 
-            self.tray_thread = threading.Thread(target=self.tray_icon.run, daemon=True)
+            self.tray_thread = threading.Thread(
+                target=self.tray_icon.run, daemon=True
+            )
             self.tray_thread.start()
 
     def quit_application(self):
