@@ -1,5 +1,4 @@
 import os
-import sys
 import threading
 import time
 import tkinter as tk
@@ -15,7 +14,7 @@ from requests import exceptions, get
 # --- 核心修复：在导入pygame前设置虚拟视频驱动 ---
 os.environ["SDL_VIDEODRIVER"] = "dummy"
 
-# --- 手柄和翻页逻辑配置 (保持不变) ---
+# --- 手柄和翻页逻辑配置 ---
 NEXT_PAGE_BUTTONS = {10, 11, 7}
 NEXT_PAGE_AXES = {0, 1}
 PREV_PAGE_BUTTONS = {5, 8, 9}
@@ -23,13 +22,11 @@ PREV_PAGE_AXES = {0, 1}
 AXIS_THRESHOLD = 0.8
 COOLDOWN_SECONDS = 0.4
 
-
-# 打包 exe 时注意替换下面语句
 # 打包 exe 用
-ROOT_PATH = os.path.dirname(sys.executable)
+# ROOT_PATH = os.path.dirname(sys.executable)
 
 # 代码运行时用
-# ROOT_PATH = os.getcwd()
+ROOT_PATH = os.getcwd()
 ICON_PATH = os.path.join(ROOT_PATH, "icon.ico")
 
 
@@ -63,7 +60,6 @@ class PageTurnerApp:
         self.root.bind("<Unmap>", self.handle_minimize)
 
     def create_widgets(self):
-        # (此方法内容保持不变)
         main_frame = ttk.Frame(self.root, padding="20 20 20 10")
         main_frame.pack(fill=tk.BOTH, expand=True)
         center_frame = ttk.Frame(main_frame)
@@ -209,7 +205,6 @@ class PageTurnerApp:
         return image
 
     def setup_tray_icon(self):
-        # (此方法内容保持不变)
         """设置托盘图标及其菜单"""
         icon_image = self.create_icon_image()
         menu = (
@@ -222,7 +217,6 @@ class PageTurnerApp:
         return self.tray_icon
 
     def show_window(self):
-        # (此方法内容保持不变)
         """从托盘恢复窗口 (已修复Bug)"""
         if self.tray_icon:
             self.tray_icon.stop()
@@ -234,7 +228,6 @@ class PageTurnerApp:
         self.root.after(0, self.root.deiconify)  # 恢复窗口
 
     def hide_to_tray(self):
-        # (此方法内容保持不变)
         """隐藏窗口并显示托盘图标"""
         self.root.withdraw()  # 隐藏主窗口
 
@@ -248,7 +241,6 @@ class PageTurnerApp:
             self.tray_thread.start()
 
     def quit_application(self):
-        # (此方法内容保持不变)
         """完全退出应用程序。"""
         if self.tray_icon:
             self.tray_icon.stop()
