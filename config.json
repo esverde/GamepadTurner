@@ -1,0 +1,28 @@
+{
+    "controller": {
+        "next_page_buttons": [
+            10,
+            11,
+            7
+        ],
+        "next_page_axes": [
+            0,
+            1
+        ],
+        "prev_page_buttons": [
+            5,
+            8,
+            9
+        ],
+        "prev_page_axes": [
+            0,
+            1
+        ],
+        "axis_threshold": 0.8,
+        "cooldown_seconds": 0.4
+    },
+    "network": {
+        "default_ip": "192.168.1.10",
+        "default_port": "8080"
+    }
+}

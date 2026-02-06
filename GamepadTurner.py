@@ -1,3 +1,4 @@
+import json
 import os
 import threading
 import time
@@ -14,27 +15,63 @@ from requests import exceptions, get
 # --- 核心修复：在导入pygame前设置虚拟视频驱动 ---
 os.environ["SDL_VIDEODRIVER"] = "dummy"
 
-# --- 手柄和翻页逻辑配置 ---
-NEXT_PAGE_BUTTONS = {10, 11, 7}
-NEXT_PAGE_AXES = {0, 1}
-PREV_PAGE_BUTTONS = {5, 8, 9}
-PREV_PAGE_AXES = {0, 1}
-AXIS_THRESHOLD = 0.8
-COOLDOWN_SECONDS = 0.4
-
 # 打包 exe 用
 # ROOT_PATH = os.path.dirname(sys.executable)
 
 # 代码运行时用
 ROOT_PATH = os.getcwd()
 ICON_PATH = os.path.join(ROOT_PATH, "icon.ico")
+CONFIG_PATH = os.path.join(ROOT_PATH, "config.json")
+
+DEFAULT_CONFIG = {
+    "controller": {
+        "next_page_buttons": [10, 11, 7],
+        "next_page_axes": [0, 1],
+        "prev_page_buttons": [5, 8, 9],
+        "prev_page_axes": [0, 1],
+        "axis_threshold": 0.8,
+        "cooldown_seconds": 0.4,
+    },
+    "network": {"default_ip": "192.168.1.10", "default_port": "8080"},
+}
+
+
+def load_config():
+    """加载配置，如果文件不存在则创建默认配置"""
+    if not os.path.exists(CONFIG_PATH):
+        try:
+            with open(CONFIG_PATH, "w", encoding="utf-8") as f:
+                json.dump(DEFAULT_CONFIG, f, indent=4)
+            return DEFAULT_CONFIG
+        except Exception as e:
+            print(f"创建配置文件失败: {e}")
+            return DEFAULT_CONFIG
+
+    try:
+        with open(CONFIG_PATH, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception as e:
+        print(f"读取配置文件失败: {e}, 将使用默认配置")
+        return DEFAULT_CONFIG
 
 
 class PageTurnerApp:
     def __init__(self, root):
+        self.config = load_config()
+        self.controller_config = self.config.get(
+            "controller", DEFAULT_CONFIG["controller"]
+        )
+        self.network_config = self.config.get(
+            "network", DEFAULT_CONFIG["network"]
+        )
+
         self.root = root
         self.root.title("手柄无线翻页器")
-        self.root.iconbitmap(ICON_PATH)
+        try:
+            self.root.iconbitmap(ICON_PATH)
+        except Exception:
+            pass  # 如果图标不存在，使用默认图标
+
         self.root.geometry("400x280")
         self.root.resizable(False, False)
 
@@ -76,7 +113,9 @@ class PageTurnerApp:
         ttk.Label(
             center_frame, text="阅读器 IP 地址:", style="Custom.TLabel"
         ).grid(row=0, column=0, sticky=tk.W, pady=8, padx=5)
-        self.ip_var = tk.StringVar(value="192.168.1.10")
+
+        default_ip = self.network_config.get("default_ip", "192.168.1.10")
+        self.ip_var = tk.StringVar(value=default_ip)
         self.ip_entry = ttk.Entry(
             center_frame,
             textvariable=self.ip_var,
@@ -84,10 +123,13 @@ class PageTurnerApp:
             style="Custom.TEntry",
         )
         self.ip_entry.grid(row=0, column=1, sticky=tk.W, padx=5)
+
         ttk.Label(center_frame, text="端口:", style="Custom.TLabel").grid(
             row=1, column=0, sticky=tk.W, pady=8, padx=5
         )
-        self.port_var = tk.StringVar(value="8080")
+
+        default_port = self.network_config.get("default_port", "8080")
+        self.port_var = tk.StringVar(value=default_port)
         self.port_entry = ttk.Entry(
             center_frame,
             textvariable=self.port_var,
@@ -146,22 +188,30 @@ class PageTurnerApp:
     def poll_controller(self):
         if not self.is_running or not self.joystick_obj:
             return
+
+        # 从配置中获取按键映射
+        next_buttons = set(self.controller_config.get("next_page_buttons", []))
+        next_axes = set(self.controller_config.get("next_page_axes", []))
+        prev_buttons = set(self.controller_config.get("prev_page_buttons", []))
+        prev_axes = set(self.controller_config.get("prev_page_axes", []))
+        threshold = self.controller_config.get("axis_threshold", 0.8)
+
         try:
             event.pump()
-            for button_id in NEXT_PAGE_BUTTONS:
+            for button_id in next_buttons:
                 if self.joystick_obj.get_button(button_id):
                     self.turn_page("next")
                     break
-            for axis_id in NEXT_PAGE_AXES:
-                if self.joystick_obj.get_axis(axis_id) >= AXIS_THRESHOLD:
+            for axis_id in next_axes:
+                if self.joystick_obj.get_axis(axis_id) >= threshold:
                     self.turn_page("next")
                     break
-            for button_id in PREV_PAGE_BUTTONS:
+            for button_id in prev_buttons:
                 if self.joystick_obj.get_button(button_id):
                     self.turn_page("prev")
                     break
-            for axis_id in PREV_PAGE_AXES:
-                if self.joystick_obj.get_axis(axis_id) <= -AXIS_THRESHOLD:
+            for axis_id in prev_axes:
+                if self.joystick_obj.get_axis(axis_id) <= -threshold:
                     self.turn_page("prev")
                     break
         except Exception:
@@ -174,20 +224,37 @@ class PageTurnerApp:
 
     def turn_page(self, direction):
         current_time = time.time()
-        if current_time - self.last_action_time < COOLDOWN_SECONDS:
+        cooldown = self.controller_config.get("cooldown_seconds", 0.4)
+
+        if current_time - self.last_action_time < cooldown:
             return
+
+        self.last_action_time = current_time
+
         ip = self.ip_var.get()
         port = self.port_var.get()
         base_url = f"http://{ip}:{port}/koreader/event/GotoViewRel"
         url = f"{base_url}/1" if direction == "next" else f"{base_url}/-1"
         action_text = "向后翻页" if direction == "next" else "向前翻页"
+
+        # 使用线程避免阻塞主界面
+        threading.Thread(
+            target=self._send_request_thread,
+            args=(url, action_text, ip, port),
+            daemon=True,
+        ).start()
+
+    def _send_request_thread(self, url, action_text, ip, port):
+        """在后台线程中发送网络请求，并通过 after 更新 UI"""
         try:
             get(url, timeout=1.0)
-            self.status_var.set(f"操作成功: {action_text}")
+            self.root.after(
+                0, lambda: self.status_var.set(f"操作成功: {action_text}")
+            )
         except exceptions.RequestException:
-            self.status_var.set(f"错误: 无法连接到 {ip}:{port}")
-        finally:
-            self.last_action_time = current_time
+            self.root.after(
+                0, lambda: self.status_var.set(f"错误: 无法连接到 {ip}:{port}")
+            )
 
     # --- 新增的最小化事件处理方法 ---
     def handle_minimize(self, event):
@@ -201,8 +268,12 @@ class PageTurnerApp:
 
     # --- 托盘图标及窗口管理方法 ---
     def create_icon_image(self):
-        image = Image.open(ICON_PATH)
-        return image
+        try:
+            image = Image.open(ICON_PATH)
+            return image
+        except Exception:
+            # 创建一个简单的默认图标（红色方块），避免程序崩溃
+            return Image.new("RGB", (64, 64), color="red")
 
     def setup_tray_icon(self):
         """设置托盘图标及其菜单"""
