@@ -1,8 +1,10 @@
 import json
 import os
+import sys
 import threading
 import time
 import tkinter as tk
+import warnings
 from tkinter import font, ttk
 
 import pystray
@@ -12,16 +14,33 @@ from pygame import init as pygame_init
 from pygame import quit as pygame_quit
 from requests import exceptions, get
 
+warnings.filterwarnings("ignore", category=UserWarning, module="pygame.pkgdata")
+
 # --- 核心修复：在导入pygame前设置虚拟视频驱动 ---
 os.environ["SDL_VIDEODRIVER"] = "dummy"
 
-# 打包 exe 用
-# ROOT_PATH = os.path.dirname(sys.executable)
+# ==========================================
+# 路径处理逻辑 (适配 Nuitka 打包)
+# ==========================================
+if "__compiled__" in globals():
+    # Nuitka 打包后的运行环境
+    # sys.executable: 指向生成的 .exe 文件路径
+    # __file__: 指向临时解压目录中的 file 路径 (对于 --onefile)
 
-# 代码运行时用
-ROOT_PATH = os.getcwd()
-ICON_PATH = os.path.join(ROOT_PATH, "icon.ico")
-CONFIG_PATH = os.path.join(ROOT_PATH, "config.json")
+    # 外部配置文件：存放在 .exe 同级目录，方便用户修改
+    EXE_DIR = os.path.dirname(sys.executable)
+    CONFIG_PATH = os.path.join(EXE_DIR, "config.json")
+
+    # 内部资源文件：存放在解压后的临时目录 (如果使用 --include-data-file)
+    # 这里假设 icon.ico 会被打包进 exe
+    BUNDLE_DIR = os.path.dirname(__file__)
+    ICON_PATH = os.path.join(BUNDLE_DIR, "icon.ico")
+else:
+    # 普通 Python 脚本运行环境
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    CONFIG_PATH = os.path.join(BASE_DIR, "config.json")
+    ICON_PATH = os.path.join(BASE_DIR, "icon.ico")
+
 
 DEFAULT_CONFIG = {
     "controller": {
